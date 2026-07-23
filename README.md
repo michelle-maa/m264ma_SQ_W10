@@ -1,22 +1,11 @@
-# Week 6 Example 2 — Free Roam Top-Down with Boss Battle
+# m264ma_SQ_W10
 
-## What This Example Demonstrates
+## Updates to Code
 
-> **Note for students:** This section is included in example files only to help you study. Do not include it in your Side Quest submissions.
-
-This example builds on Example 1 by replacing the auto-scrolling world with a free roam top-down world. The player moves freely across a large world and a smooth-follow camera keeps them in view. Enemy waves are triggered by the player's position. A minimap shows where enemies and the boss are at all times. A giant orange blob boss spawns when the player enters the boss zone at the top of the world.
-
-- **Free roam world** — the world is 1600×2000px; the player moves in world coordinates and is constrained to world boundaries with `constrain()`
-- **Smooth-follow camera** — `camX` and `camY` track the top-left of the visible area; `lerp()` moves the camera smoothly toward the player each frame; `translate(-camX, -camY)` shifts all world drawing into screen coordinates
-- **`push()` / `pop()` around translate** — everything inside draws in world coordinates; HUD and minimap are drawn after `pop()` in screen coordinates so they stay fixed on screen
-- **`loadJSON()`** — loads `data/enemies.json` in `preload()`; wave trigger positions, enemy speeds, and boss data all stored in one file
-- **Position-based wave triggers** — each wave has a `spawnAt` world Y value; `checkWaveSpawns()` compares `player.y` against each threshold; when the player moves above it the wave spawns
-- **Boss zone** — a glowing area at the top of the world; entering it calls `spawnBoss()` which builds the boss object from JSON data and switches to `STATE_BOSS`
-- **Boss state machine** — cycles through `"pausing"`, `"charging"`, `"retreating"`; charges at the player, overshoots, retreats to the top centre, pauses, repeats
-- **Minimap** — drawn in screen coordinates after `pop()`; uses `map()` to convert world positions to minimap positions; shows player (teal), enemies (orange), boss (red), and a camera viewport rectangle
-- **Two `lerpColor()` bars** — player health shifts green→red; boss health shifts orange→red
-- **Sound hooks** — all sound calls are commented out; hooks for shoot, hit, player hit, boss hit, boss music transition, and win
-- **B key** — skips directly to the boss fight for testing; calls `spawnBoss()` and moves the player into the boss zone
+Using Week 6's example code, I updated the code to have three meaningful changes: 
+- Added a timer. Players must complete the game before 1.5mins. 
+- Added star collectables for the player, giving them an accomplishment if they collect all three. 
+- Added a start screen that appears before game play state. 
 
 ## Setup and Interaction Instructions
 
@@ -27,6 +16,7 @@ To run the sketch locally, open `index.html` in Google Chrome using Live Server.
 - Shoot: Spacebar (shoots in the direction you last moved)
 - B: Skip to boss fight (testing only)
 - Restart: R (after win or game over)
+- Start Game: ENTER key 
 
 Explore the world, survive enemy waves as you move north, then enter the glowing boss zone to fight the giant orange blob. Watch the minimap to track enemies off screen.
 
@@ -44,8 +34,25 @@ Open `data/enemies.json` to change when waves spawn, how many enemies appear, th
 
 ## Assets
 
-No external assets used. All visuals are generated with p5.js.
+| File                                          | Source                                     |
+| ----------------------------------------------| -------------------------------------------|
+| `assets'/sounds/bg_music.wav`                 | Sound by MatthewHenry / Freesound [4]      |
+| `assets'/sounds/laser_shot.wav`               | Sound by djfroyd / Freesound [2]           |
+| `assets'/sounds/player_hurt.flac`             | Sound by Iwan Gabovitch / Freesound [3]    |
+| `assets'/sounds/star_twinkle.wav`             | Sound by Robinhood86 / Freesound [5]       |
+| `assets'/sounds/win_sound.wav`                | Sound by avreference / Freesound [1]       |
+
+Google Gemini was used to generate the character sprite sheet. 
 
 ## References
 
-N/A
+[1] avreference. 2024. Congrats FX, Freesound. Retrived July 22, 2026 from https://freesound.org/people/avreference/sounds/737181/
+
+[2] djfroyd. 2016. laser one-shot #1.wav, Freesound. Retrived July 22, 2026 from https://freesound.org/people/djfroyd/sounds/348164/
+
+[3] Iwan Gabovitch. 2013. Damage, Freesound. Retrived July 22, 2026 from https://freesound.org/people/qubodup/sounds/211634/
+
+[4] MatthewHenry. 2023. Action Music Loop 2 "Hunted", Freesound. Retrived July 22, 2026 from https://freesound.org/people/MathewHenry/sounds/685597/
+
+[5] Robinhood86. 2025. 13819 star twinkle ding, Freesound. Retrived July 22, 2026 from https://freesound.org/people/Robinhood76/sounds/819418/
+
