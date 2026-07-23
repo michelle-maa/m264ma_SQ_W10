@@ -95,6 +95,11 @@ function preload() {
   obstacleData = loadJSON("data/obstacles.json");
   spriteSheet  = loadImage("assets/images/character_sprite_packed.png");
   spriteMeta   = loadJSON("data/character_sprite_meta.json");
+  music = loadSound("assets/sounds/bg_music.wav");
+  shootSound = loadSound("assets/sounds/laser_shot.wav");
+  playerHitSound = loadSound("assets/sounds/player_hurt.flac");
+  winSound = loadSound("assets/sounds/win_sound.wav");
+  starCollectSound = loadSound("assets/sounds/star_twinkle.wav");
 }
 
 // ------------------------------------------------------------
@@ -145,13 +150,12 @@ let startTime;
 // ------------------------------------------------------------
 // SOUNDS — uncomment and fill in paths to add audio
 // ------------------------------------------------------------
-// let shootSound;
-// let hitSound;
-// let playerHitSound;
-// let bossHitSound;
-// let bossMusic;
-// let winSound;
-// let music;
+let music;
+let shootSound;
+let playerHitSound;
+let winSound;
+let starCollectSound;
+
 
 // ============================================================
 // setup()
@@ -377,11 +381,11 @@ function checkObstaclePlayerCollision() {
         player.bounceVY = (dy / len) * 8;
       }
 
-      // playerHitSound.play();
+      playerHitSound.play();
 
       if (player.health <= 0) {
         gameState = STATE_OVER;
-        // music.stop();
+        music.stop();
       }
       break;
     }
@@ -518,7 +522,7 @@ function handleInput() {
       vy: player.direction.y * BULLET_SPEED,
     });
     player.shootTimer = SHOOT_COOLDOWN;
-    // shootSound.play();
+    shootSound.play();
   }
     updateAnimState();
 }
@@ -601,9 +605,6 @@ function spawnBoss() {
 
   enemies = [];
   gameState = STATE_BOSS;
-
-  // music.stop();
-  // bossMusic.loop();
 }
 
 // ------------------------------------------------------------
@@ -690,8 +691,8 @@ function checkBulletBossCollision() {
 
       if (boss.health <= 0) {
         gameState = STATE_WIN;
-        // winSound.play();
-        // bossMusic.stop();
+        winSound.play();
+        music.stop();
       }
       break;
     }
@@ -709,7 +710,7 @@ function checkBossPlayerCollision() {
     player.health--;
     player.invincible      = true;
     player.invincibleTimer = INVINCIBLE_FRAMES;
-    // playerHitSound.play();
+    playerHitSound.play();
 
     if (player.health <= 0) {
       gameState = STATE_OVER;
@@ -730,11 +731,11 @@ function checkEnemyPlayerCollision() {
       player.health--;
       player.invincible      = true;
       player.invincibleTimer = INVINCIBLE_FRAMES;
-      // playerHitSound.play();
+      playerHitSound.play();
 
       if (player.health <= 0) {
         gameState = STATE_OVER;
-        // music.stop();
+        music.stop();
       }
       break;
     }
@@ -839,11 +840,12 @@ function checkStarCollection() {
     if (d < player.r + STAR_R) {
       s.collected = true;
       starsCollected++;
-      // starCollectSound.play();
+      starCollectSound.play();
 
       if (starsCollected >= STAR_COUNT) {
         showStarBanner    = true;
         starBannerEndTime = millis() + STAR_BANNER_DURATION;
+        winSound.play();
       }
     }
   }
@@ -947,7 +949,7 @@ function drawEnemies() {
 // Drawn in world coordinates.
 // ------------------------------------------------------------
 function drawBullets() {
-  fill(255);
+  fill(255, 0, 0);
   noStroke();
   for (let i = 0; i < bullets.length; i++) {
     ellipse(bullets[i].x, bullets[i].y, 10);
@@ -979,8 +981,7 @@ function checkTimer() {
   let remaining = TIME_LIMIT - (millis() - startTime);
   if (remaining <= 0) {
     gameState = STATE_OVER;
-    // music.stop();
-    // bossMusic.stop();
+    music.stop();
   }
 }
 
@@ -1237,6 +1238,7 @@ function keyPressed() {
   if (gameState === STATE_START && keyCode === ENTER) {
     gameState = STATE_PLAY;
     startTime = millis(); // timer begins the moment gameplay actually starts
+    music.loop();
   }
 
   // B — skip to boss fight for testing
@@ -1247,7 +1249,7 @@ function keyPressed() {
 
   // R — restart
   if ((key === "r" || key === "R") && gameState !== STATE_PLAY && gameState !== STATE_BOSS) {
-    gameState = STATE_PLAY;
+    gameState = STATE_START;
     score     = 0;
     nextWave  = 0;
     bullets   = [];
