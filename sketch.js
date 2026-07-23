@@ -109,6 +109,20 @@ const MAP_X = 16;  // screen position — bottom left
 const MAP_Y_OFFSET = 16; // offset from bottom of screen
 
 // ------------------------------------------------------------
+// STAR COLLECTIBLES
+// Three stars are scattered around the world. Collecting all
+// three triggers a "completion" banner overlay for 5 seconds,
+// then gameplay continues normally underneath it.
+// ------------------------------------------------------------
+let stars = [];
+const STAR_COUNT = 3;
+const STAR_R = 14;
+let starsCollected = 0;
+let showStarBanner = false;
+let starBannerEndTime = 0;
+const STAR_BANNER_DURATION = 5000; // milliseconds
+
+// ------------------------------------------------------------
 // GAME STATE
 // ------------------------------------------------------------
 let score = 0;
@@ -117,7 +131,16 @@ const STATE_PLAY = "play";
 const STATE_BOSS = "boss";
 const STATE_WIN = "win";
 const STATE_OVER = "over";
-let gameState = STATE_PLAY;
+const STATE_START = "start"; // new — shown before gameplay begins
+let gameState = STATE_START; // was STATE_PLAY
+
+// ------------------------------------------------------------
+// TIMER
+// Counts down from TIME_LIMIT. If it reaches 0 before the
+// player beats the boss, the game ends.
+// ------------------------------------------------------------
+const TIME_LIMIT = 1.5 * 60 * 1000; // 1.5 minutes, in milliseconds
+let startTime;
 
 // ------------------------------------------------------------
 // SOUNDS — uncomment and fill in paths to add audio
@@ -164,6 +187,14 @@ function setup() {
     });
   }
 
+   for (let i = 0; i < STAR_COUNT; i++) {
+    stars.push({
+      x: random(100, WORLD_W - 100),
+      y: random(BOSS_ZONE_Y + 200, WORLD_H - 300),
+      collected: false,
+    });
+  }
+
   // Start camera so player is visible
   camX = player.x - width / 2;
   camY = player.y - height / 2;
@@ -178,6 +209,12 @@ function setup() {
 function draw() {
   background(20);
 
+
+  if (gameState === STATE_START) {
+    drawStartScreen();
+    return; // skip camera, world, HUD entirely until the game begins
+  }
+
   updateCamera();
 
   // Everything inside push/pop is drawn in world coordinates
@@ -186,6 +223,10 @@ function draw() {
 
   drawBackground();
   drawBossZone();
+  
+  if (gameState === STATE_PLAY || gameState === STATE_BOSS) {
+    checkTimer(); // add this
+  }
 
   if (gameState === STATE_PLAY) {
     handleInput();
@@ -202,6 +243,9 @@ function draw() {
     drawEnemies();
     drawBullets();
     drawPlayer();
+    drawStars();
+    checkStarCollection();
+
 
   } else if (gameState === STATE_BOSS) {
     handleInput();
@@ -227,6 +271,8 @@ function draw() {
   if (gameState === STATE_BOSS) drawBossHUD();
   if (gameState === STATE_WIN)  drawWinScreen();
   if (gameState === STATE_OVER) drawGameOver();
+
+  drawStarBanner(); // overlay — independent of gameState, so it works anytime
 }
 
 // ------------------------------------------------------------
@@ -726,6 +772,111 @@ function updateInvincibility() {
 }
 
 // ------------------------------------------------------------
+// drawStars()
+// World-space stars with a gentle bob + spin. Skips collected
+// and off-screen stars.
+// ------------------------------------------------------------
+function drawStars() {
+  for (let i = 0; i < stars.length; i++) {
+    let s = stars[i];
+    if (s.collected) continue;
+
+    if (
+      s.x + STAR_R < camX || s.x - STAR_R > camX + width ||
+      s.y + STAR_R < camY || s.y - STAR_R > camY + height
+    ) continue;
+
+    let bob  = sin(frameCount * 0.05 + i * 2) * 4;
+    let spin = frameCount * 0.03;
+
+    push();
+    translate(s.x, s.y + bob);
+    rotate(spin);
+
+    noStroke();
+    fill(255, 220, 80, 60);
+    ellipse(0, 0, STAR_R * 3); // soft glow
+
+    fill(255, 220, 80);
+    drawStarShape(0, 0, STAR_R * 0.5, STAR_R, 5);
+    pop();
+  }
+}
+
+// ------------------------------------------------------------
+// drawStarShape()
+// Helper — draws an n-pointed star centred at (x, y).
+// radius1 = inner points, radius2 = outer points.
+// ------------------------------------------------------------
+function drawStarShape(x, y, radius1, radius2, npoints) {
+  let angle = TWO_PI / npoints;
+  let halfAngle = angle / 2.0;
+  beginShape();
+  for (let a = -PI / 2; a < TWO_PI - PI / 2; a += angle) {
+    let sx = x + cos(a) * radius2;
+    let sy = y + sin(a) * radius2;
+    vertex(sx, sy);
+    sx = x + cos(a + halfAngle) * radius1;
+    sy = y + sin(a + halfAngle) * radius1;
+    vertex(sx, sy);
+  }
+  endShape(CLOSE);
+}
+
+// ------------------------------------------------------------
+// checkStarCollection()
+// Circle-circle overlap between player and each uncollected
+// star. Triggers the banner once all three are collected.
+// ------------------------------------------------------------
+function checkStarCollection() {
+  if (gameState !== STATE_PLAY && gameState !== STATE_BOSS) return;
+
+  for (let i = 0; i < stars.length; i++) {
+    let s = stars[i];
+    if (s.collected) continue;
+
+    let d = dist(player.x, player.y, s.x, s.y);
+    if (d < player.r + STAR_R) {
+      s.collected = true;
+      starsCollected++;
+      // starCollectSound.play();
+
+      if (starsCollected >= STAR_COUNT) {
+        showStarBanner    = true;
+        starBannerEndTime = millis() + STAR_BANNER_DURATION;
+      }
+    }
+  }
+}
+
+// ------------------------------------------------------------
+// drawStarBanner()
+// Screen-space overlay shown for 5 seconds after collecting
+// all stars. Gameplay continues underneath it.
+// ------------------------------------------------------------
+function drawStarBanner() {
+  if (!showStarBanner) return;
+
+  if (millis() > starBannerEndTime) {
+    showStarBanner = false;
+    return;
+  }
+
+  fill(0, 0, 0, 180);
+  rect(0, 0, width, height);
+
+  fill(255, 220, 80);
+  textAlign(CENTER);
+  textSize(40);
+  textFont("monospace");
+  text("★ All Stars Collected! ★", width / 2, height / 2 - 10);
+
+  fill(220);
+  textSize(16);
+  text("Great job, explorer!", width / 2, height / 2 + 30);
+}
+
+// ------------------------------------------------------------
 // drawBoss()
 // Drawn in world coordinates inside push/pop.
 // ------------------------------------------------------------
@@ -824,6 +975,15 @@ function drawPlayer() {
   pop();
 }
 
+function checkTimer() {
+  let remaining = TIME_LIMIT - (millis() - startTime);
+  if (remaining <= 0) {
+    gameState = STATE_OVER;
+    // music.stop();
+    // bossMusic.stop();
+  }
+}
+
 // ------------------------------------------------------------
 // drawMinimap()
 // Drawn in screen coordinates after pop().
@@ -895,6 +1055,31 @@ function drawMinimap() {
 }
 
 // ------------------------------------------------------------
+// drawStartScreen()
+// Shown before gameplay begins. Waits for a keypress to start.
+// ------------------------------------------------------------
+function drawStartScreen() {
+  background(15, 15, 25);
+
+  fill(0, 200, 180);
+  textAlign(CENTER);
+  textSize(48);
+  textFont("monospace");
+  text("SPACE SHOOTER", width / 2, height / 2 - 60);
+
+  fill(200);
+  textSize(16);
+  text("Move: WASD   Shoot: Spacebar", width / 2, height / 2 - 10);
+  text("Collect all 3 stars   •   Defeat the boss   •   Beat the clock", width / 2, height / 2 + 15);
+
+  // pulsing "press enter" prompt
+  let pulse = map(sin(frameCount * 0.08), -1, 1, 120, 255);
+  fill(255, 255, 255, pulse);
+  textSize(18);
+  text("Press ENTER to start", width / 2, height / 2 + 70);
+}
+
+// ------------------------------------------------------------
 // drawHUD()
 // Drawn in screen coordinates.
 // ------------------------------------------------------------
@@ -941,6 +1126,33 @@ function drawHUD() {
     textSize(14);
     text("Boss zone ahead — proceed carefully", width / 2, height - 20);
   }
+
+  // Countdown timer — top centre
+  if (gameState === STATE_PLAY || gameState === STATE_BOSS) {
+    let remaining = max(0, TIME_LIMIT - (millis() - startTime));
+    let totalSeconds = ceil(remaining / 1000);
+    let mins = floor(totalSeconds / 60);
+    let secs = totalSeconds % 60;
+    let timeStr = nf(mins, 1) + ":" + nf(secs, 2);
+
+    // turn red in the last 30 seconds as a warning
+    fill(totalSeconds <= 30 ? color(255, 80, 80) : color(255));
+    textSize(20);
+    textAlign(CENTER);
+    textFont("monospace");
+    text(timeStr, width / 2, 28);
+  }
+
+  // Star collectible HUD — top left
+  for (let i = 0; i < STAR_COUNT; i++) {
+    let filled = i < starsCollected;
+    push();
+    translate(16 + i * 26 + 5, 44);
+    fill(filled ? color(255, 220, 80) : color(70));
+    noStroke();
+    drawStarShape(0, 0, 5, 10, 5);
+    pop();
+  }
 }
 
 // ------------------------------------------------------------
@@ -953,7 +1165,7 @@ function drawBossHUD() {
   let barW  = 400;
   let barH  = 18;
   let barX  = (width - barW) / 2;
-  let barY  = 10;
+  let barY  = 54;
   let fillW = map(boss.health, 0, boss.maxHealth, 0, barW);
 
   fill(40);
@@ -1021,6 +1233,12 @@ function drawGameOver() {
 // R restarts. B skips to boss fight.
 // ------------------------------------------------------------
 function keyPressed() {
+  // ENTER — start the game from the start screen
+  if (gameState === STATE_START && keyCode === ENTER) {
+    gameState = STATE_PLAY;
+    startTime = millis(); // timer begins the moment gameplay actually starts
+  }
+
   // B — skip to boss fight for testing
   if (key === "b" || key === "B") {
     player.y = BOSS_ZONE_Y - 10;
@@ -1048,6 +1266,12 @@ function keyPressed() {
 
     camX = player.x - width / 2;
     camY = player.y - height / 2;
+
+    startTime = millis(); // reset the clock on restart
+
+    starsCollected  = 0;
+    showStarBanner  = false;
+    for (let i = 0; i < stars.length; i++) stars[i].collected = false;
 
     // music.loop();
   }
